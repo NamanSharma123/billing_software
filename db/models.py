@@ -75,6 +75,13 @@ def create_tables():
         );
     """)
 
+    # enrollment_details predates these columns — CREATE TABLE IF NOT EXISTS
+    # won't add them to an already-existing table, so add them explicitly.
+    existing_cols = {row[1] for row in cur.execute("PRAGMA table_info(enrollment_details)")}
+    for col in ("ref", "course_fee", "remarks"):
+        if col not in existing_cols:
+            cur.execute(f"ALTER TABLE enrollment_details ADD COLUMN {col} TEXT")
+
     # Seed default admin user if no users exist
     cur.execute("SELECT COUNT(*) FROM users")
     if cur.fetchone()[0] == 0:
