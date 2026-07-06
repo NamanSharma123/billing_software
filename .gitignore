@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+*.pyo
+
+# Local SQLite database — contains real student data, don't share via git
+database.db
+
+# Generated PDFs — contain real student data
+forms_output/*.pdf
