@@ -9,9 +9,52 @@ import datetime
 from db.models import create_tables
 from db.database import connect_db
 
+LOGO_PATH = os.path.join(os.path.dirname(__file__), "assets", "logo.jpeg")
+
+
+def _load_logo(size):
+    """Returns a Tk-compatible PhotoImage of the brand logo at `size`,
+    or None if Pillow / the asset isn't available (caller falls back to text)."""
+    try:
+        from PIL import Image, ImageTk
+        img = Image.open(LOGO_PATH).convert("RGBA").resize(size, Image.LANCZOS)
+        return ImageTk.PhotoImage(img)
+    except Exception:
+        return None
+
 
 def hash_password(pw):
     return hashlib.sha256(pw.encode()).hexdigest()
+
+
+def _fade_in(root, steps=12, delay=15):
+    """Gentle window fade-in on open — cheap first-impression polish."""
+    try:
+        root.attributes("-alpha", 0.0)
+    except tk.TclError:
+        return  # platform doesn't support window alpha; skip silently
+    def step(n):
+        try:
+            root.attributes("-alpha", min(1.0, n / steps))
+        except tk.TclError:
+            return
+        if n < steps:
+            root.after(delay, lambda: step(n + 1))
+    step(1)
+
+
+def _vgradient(canvas, w, h, top, bottom):
+    """Paint a top-to-bottom color gradient onto `canvas` (used for subtle
+    panel backgrounds — plain Tkinter has no native gradient fill)."""
+    tr, tg, tb = int(top[1:3], 16), int(top[3:5], 16), int(top[5:7], 16)
+    br, bg_, bb = int(bottom[1:3], 16), int(bottom[3:5], 16), int(bottom[5:7], 16)
+    steps = max(1, h)
+    for i in range(steps):
+        f = i / steps
+        r = int(tr + (br - tr) * f)
+        g = int(tg + (bg_ - tg) * f)
+        b = int(tb + (bb - tb) * f)
+        canvas.create_line(0, i, w, i, fill=f"#{r:02x}{g:02x}{b:02x}")
 
 
 # ── Shake on wrong password ────────────────────────────────────
@@ -36,12 +79,20 @@ def run_login():
     # ═══════════════════════════════════════════════════════════
     # LEFT PANEL  (fills 42 % of screen, no inner card)
     # ═══════════════════════════════════════════════════════════
-    left = tk.Frame(root, bg="#13293f")
+    left = tk.Canvas(root, bg="#13293f", highlightthickness=0)
     left.place(relx=0, rely=0, relwidth=0.42, relheight=1)
+    root.update_idletasks()
+    _vgradient(left, left.winfo_width(), left.winfo_height(), "#13293f", "#0d1b2a")
 
     # ── Top-left logo bar ─────────────────────────────────────
     logo_bar = tk.Frame(left, bg="#0d1b2a", pady=16, padx=20)
     logo_bar.place(relx=0, rely=0, relwidth=1, height=70)
+
+    small_logo_img = _load_logo((44, 44))
+    if small_logo_img:
+        logo_lbl = tk.Label(logo_bar, image=small_logo_img, bg="#0d1b2a")
+        logo_lbl.image = small_logo_img  # keep a reference — Tk drops GC'd images
+        logo_lbl.pack(side="left", padx=(0, 10))
 
     tk.Label(logo_bar, text="CODING NOW",
              font=("Segoe UI", 14, "bold"),
@@ -54,9 +105,15 @@ def run_login():
     center = tk.Frame(left, bg="#13293f")
     center.place(relx=0.08, rely=0.18, relwidth=0.84, relheight=0.50)
 
-    tk.Label(center, text="🏫",
-             font=("Segoe UI Emoji", 52),
-             bg="#13293f").pack(anchor="w", pady=(10, 0))
+    big_logo_img = _load_logo((150, 150))
+    if big_logo_img:
+        big_logo_lbl = tk.Label(center, image=big_logo_img, bg="#13293f")
+        big_logo_lbl.image = big_logo_img
+        big_logo_lbl.pack(anchor="w", pady=(10, 0))
+    else:
+        tk.Label(center, text="🏫",
+                 font=("Segoe UI Emoji", 52),
+                 bg="#13293f").pack(anchor="w", pady=(10, 0))
     tk.Label(center, text="Learn the Future,\nthe Right Way.",
              font=("Segoe UI", 22, "bold"),
              bg="#13293f", fg="white",
@@ -83,11 +140,23 @@ def run_login():
 
         pill = tk.Frame(row, bg="#173754", padx=8, pady=4)
         pill.pack(side="left", padx=(0, 12))
-        tk.Label(pill, text=icon, font=("Segoe UI Emoji", 11),
-                 bg="#173754").pack()
+        pill_icon = tk.Label(pill, text=icon, font=("Segoe UI Emoji", 11),
+                              bg="#173754")
+        pill_icon.pack()
 
-        tk.Label(row, text=text, font=("Segoe UI", 10),
-                 bg="#13293f", fg="#cbd5e1").pack(side="left")
+        txt_lbl = tk.Label(row, text=text, font=("Segoe UI", 10),
+                            bg="#13293f", fg="#cbd5e1")
+        txt_lbl.pack(side="left")
+
+        # Subtle highlight on hover — small, cheap touch of interactivity
+        # instead of these rows being purely static/inert.
+        def _f_enter(_e, p=pill, pi=pill_icon, t=txt_lbl):
+            p.config(bg="#20456b"); pi.config(bg="#20456b"); t.config(fg="white")
+        def _f_leave(_e, p=pill, pi=pill_icon, t=txt_lbl):
+            p.config(bg="#173754"); pi.config(bg="#173754"); t.config(fg="#cbd5e1")
+        for w in (row, pill, pill_icon, txt_lbl):
+            w.bind("<Enter>", _f_enter)
+            w.bind("<Leave>", _f_leave)
 
     # ── Bottom badge ──────────────────────────────────────────
     ver = tk.Frame(left, bg="#0d1b2a", padx=14, pady=8)
@@ -117,9 +186,6 @@ def run_login():
     form.place(relx=0.5, rely=0.5, anchor="center", width=460)
 
     # ── Welcome ───────────────────────────────────────────────
-    tk.Label(form, text="👋",
-             font=("Segoe UI Emoji", 34),
-             bg="white").pack(anchor="w")
     tk.Label(form, text="Welcome Back",
              font=("Segoe UI", 30, "bold"),
              bg="white", fg="#0f172a").pack(anchor="w", pady=(6, 0))
@@ -147,12 +213,12 @@ def run_login():
         e.bind("<FocusOut>", lambda _: outer.config(highlightbackground="#e2e8f0"))
         return outer, e, inner
 
-    _label("Email Address")
+    _label("📧  Email Address")
     email_outer, email_entry, _ = _input_field()
     email_entry.insert(0, "admin@school.com")
     email_entry.focus_set()
 
-    _label("Password")
+    _label("🔒  Password")
     pass_outer = tk.Frame(form, bg="#e2e8f0",
                            highlightbackground="#e2e8f0", highlightthickness=2)
     pass_outer.pack(fill="x", pady=(6, 6))
@@ -174,11 +240,25 @@ def run_login():
                          font=("Segoe UI Emoji", 13), bg="white",
                          relief="flat", bd=0, cursor="hand2", padx=8)
     eye_btn.pack(side="right")
+    eye_btn.bind("<Enter>", lambda _: eye_btn.config(bg="#f1f5f9"))
+    eye_btn.bind("<Leave>", lambda _: eye_btn.config(bg="white"))
 
     # ── Error ─────────────────────────────────────────────────
+    # A tinted box that only takes up space once there's actually an
+    # error to show, instead of a bare label always reserving a line.
+    err_box = tk.Frame(form, bg="white")
+    err_box.pack(fill="x")
     err_var = tk.StringVar()
-    tk.Label(form, textvariable=err_var, fg="#ef4444", bg="white",
-             font=("Segoe UI", 9), wraplength=440).pack(anchor="w", pady=(6, 4))
+    err_lbl = tk.Label(err_box, textvariable=err_var, fg="#b91c1c", bg="#fef2f2",
+                        font=("Segoe UI", 9, "bold"), wraplength=420,
+                        anchor="w", justify="left", padx=10, pady=7)
+
+    def _set_error(msg):
+        err_var.set(msg)
+        if msg:
+            err_lbl.pack(fill="x", pady=(0, 14))
+        else:
+            err_lbl.pack_forget()
 
     # ── Sign In button ────────────────────────────────────────
     sign_btn = tk.Button(form, text="Sign In  →",
@@ -187,8 +267,10 @@ def run_login():
                           pady=14, cursor="hand2",
                           activebackground="#c2660d", activeforeground="white")
     sign_btn.pack(fill="x", pady=(8, 0))
-    sign_btn.bind("<Enter>", lambda _: sign_btn.config(bg="#c2660d"))
-    sign_btn.bind("<Leave>", lambda _: sign_btn.config(bg="#e67e22"))
+    sign_btn.bind("<Enter>", lambda _: sign_btn.config(bg="#c2660d")
+                  if sign_btn["state"] == "normal" else None)
+    sign_btn.bind("<Leave>", lambda _: sign_btn.config(bg="#e67e22")
+                  if sign_btn["state"] == "normal" else None)
 
     # ── Divider ───────────────────────────────────────────────
     tk.Frame(form, bg="#e2e8f0", height=1).pack(fill="x", pady=22)
@@ -217,10 +299,10 @@ def run_login():
     def do_login(_event=None):
         email    = email_entry.get().strip()
         password = pass_entry.get()
-        err_var.set("")
+        _set_error("")
 
         if not email or not password:
-            err_var.set("⚠  Please fill in both fields.")
+            _set_error("⚠  Please fill in both fields.")
             return
 
         sign_btn.config(text="Signing in…", state="disabled", bg="#94a3b8")
@@ -239,12 +321,13 @@ def run_login():
             open_dashboard(user_name=user["name"])
         else:
             sign_btn.config(text="Sign In  →", state="normal", bg="#e67e22")
-            err_var.set("✗  Invalid email or password. Please try again.")
+            _set_error("✗  Invalid email or password. Please try again.")
             pass_entry.delete(0, tk.END)
             _shake(form, root)
 
     sign_btn.config(command=do_login)
     root.bind("<Return>", do_login)
+    _fade_in(root)
     root.mainloop()
 
 

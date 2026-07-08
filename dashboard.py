@@ -37,6 +37,8 @@ NAV = [
 
 
 def open_dashboard(user_name="Admin"):
+    from main import _load_logo, _fade_in  # lazy import avoids a circular import at module load
+
     root = tk.Tk()
     root.title("Coding Now | Gurukul of AI — Billing System")
     root.state("zoomed")
@@ -51,6 +53,11 @@ def open_dashboard(user_name="Admin"):
     # Logo
     logo_block = tk.Frame(sidebar, bg=C["side_logo"], pady=18)
     logo_block.pack(fill="x")
+    logo_img = _load_logo((52, 52))
+    if logo_img:
+        logo_img_lbl = tk.Label(logo_block, image=logo_img, bg=C["side_logo"])
+        logo_img_lbl.image = logo_img  # keep a reference — Tk drops GC'd images
+        logo_img_lbl.pack(pady=(0, 6))
     tk.Label(logo_block, text="CODING NOW", font=("Segoe UI", 15, "bold"),
              bg=C["side_logo"], fg=C["indigo"]).pack()
     tk.Label(logo_block, text="GURUKUL OF AI", font=("Segoe UI", 9, "bold"),
@@ -338,6 +345,7 @@ def open_dashboard(user_name="Admin"):
 
     _activate("home")
     _load("home")
+    _fade_in(root)
     root.mainloop()
 
 
@@ -376,6 +384,16 @@ def _stat_card(parent, label, value, color, tint, emoji):
              bg=C["card"], fg=color).pack(anchor="w")
     tk.Label(body, text=label, font=("Segoe UI", 9),
              bg=C["card"], fg=C["muted"]).pack(anchor="w", pady=(2, 0))
+
+    # Subtle "lift" on hover — border picks up the card's accent color,
+    # matching the interactivity feel of the module cards below.
+    def _enter(_e):
+        card.config(highlightbackground=color, highlightthickness=2)
+    def _leave(_e):
+        card.config(highlightbackground=C["border"], highlightthickness=1)
+    for w in (card, body, icon_frame):
+        w.bind("<Enter>", _enter)
+        w.bind("<Leave>", _leave)
 
 
 def _module_card(grid, row, col, emoji, title, desc, color, tint, hover_color, cmd):

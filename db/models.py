@@ -82,6 +82,12 @@ def create_tables():
         if col not in existing_cols:
             cur.execute(f"ALTER TABLE enrollment_details ADD COLUMN {col} TEXT")
 
+    # payments predates these columns too — needed for the Fee Receipt slip.
+    payment_cols = {row[1] for row in cur.execute("PRAGMA table_info(payments)")}
+    for col in ("mode_of_payment", "transaction_id", "instalment_no", "receipt_path"):
+        if col not in payment_cols:
+            cur.execute(f"ALTER TABLE payments ADD COLUMN {col} TEXT")
+
     # Seed default admin user if no users exist
     cur.execute("SELECT COUNT(*) FROM users")
     if cur.fetchone()[0] == 0:

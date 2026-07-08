@@ -1,4 +1,5 @@
 import os
+from datetime import date
 import tkinter as tk
 from tkinter import ttk, messagebox
 from db.database import connect_db
@@ -25,6 +26,7 @@ except ImportError:
     REPORTLAB_OK = False
 
 LOGO_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "logo.jpeg")
+WATERMARK_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "watermark.png")
 
 
 def _btn(parent, text, cmd, bg, hover):
@@ -339,6 +341,9 @@ class RegistrationPanel(tk.Frame):
         if not self._current:
             messagebox.showwarning("Select", "Please select a student first.")
             return
+        receipt_date_entry = self._enroll_entries.get("receipt_date")
+        if receipt_date_entry is not None and not receipt_date_entry.get().strip():
+            receipt_date_entry.insert(0, date.today().isoformat())
         self._save_details(silent=True)
         enrollment = _get_enrollment(self._current["id"])
         out_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "forms_output")
@@ -367,6 +372,20 @@ def _build_pdf(student, bill, enrollment, path):
     doc = SimpleDocTemplate(path, pagesize=LETTER,
                             leftMargin=LM, rightMargin=RM,
                             topMargin=TM, bottomMargin=BM)
+
+    def _watermark(canvas_obj, _doc):
+        """Faint centered logo behind the page content."""
+        if not os.path.exists(WATERMARK_PATH):
+            return
+        size = 4.5 * inch
+        canvas_obj.saveState()
+        canvas_obj.drawImage(
+            WATERMARK_PATH,
+            (W_PAGE - size) / 2, (H_PAGE - size) / 2,
+            width=size, height=size,
+            mask="auto", preserveAspectRatio=True,
+        )
+        canvas_obj.restoreState()
 
     # ── Shared styles (sampled from the reference document) ───
     BLK    = colors.black
@@ -639,4 +658,4 @@ def _build_pdf(student, bill, enrollment, path):
 
     story.extend(footer)
 
-    doc.build(story)
+    doc.build(story, onFirstPage=_watermark, onLaterPages=_watermark)
