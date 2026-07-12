@@ -7,3 +7,8 @@ database.db
 
 # Generated PDFs — contain real student data
 forms_output/*.pdf
+
+# PyInstaller build output
+build/
+dist/
+*.spec

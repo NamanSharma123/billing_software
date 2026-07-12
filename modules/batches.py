@@ -1,3 +1,4 @@
+import sqlite3
 import tkinter as tk
 from tkinter import ttk, messagebox
 from db.database import connect_db
@@ -135,8 +136,17 @@ class BatchesPanel(tk.Frame):
             messagebox.showwarning("Select", "Select a batch."); return
         if not messagebox.askyesno("Confirm", "Delete this batch?"): return
         conn = connect_db()
-        conn.execute("DELETE FROM batches WHERE id=?", (self.selected_id,))
-        conn.commit(); conn.close()
+        try:
+            conn.execute("DELETE FROM batches WHERE id=?", (self.selected_id,))
+            conn.commit()
+        except sqlite3.IntegrityError:
+            conn.close()
+            messagebox.showwarning(
+                "Batch In Use",
+                "This batch still has students assigned to it. "
+                "Reassign or remove those students before deleting the batch.")
+            return
+        conn.close()
         self._clear(); self._load()
 
     def _on_select(self, _e):

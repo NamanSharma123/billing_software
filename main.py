@@ -9,7 +9,9 @@ import datetime
 from db.models import create_tables
 from db.database import connect_db
 
-LOGO_PATH = os.path.join(os.path.dirname(__file__), "assets", "logo.jpeg")
+from paths import resource_path
+
+LOGO_PATH = resource_path("assets", "logo.jpeg")
 
 
 def _load_logo(size):

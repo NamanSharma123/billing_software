@@ -3,6 +3,7 @@ from datetime import date
 import tkinter as tk
 from tkinter import ttk, messagebox
 from db.database import connect_db
+from paths import app_root, resource_path
 
 C = {
     "bg": "#f8fafc", "card": "white", "text": "#1e293b",
@@ -25,8 +26,8 @@ try:
 except ImportError:
     REPORTLAB_OK = False
 
-LOGO_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "logo.jpeg")
-WATERMARK_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "watermark.png")
+LOGO_PATH = resource_path("assets", "logo.jpeg")
+WATERMARK_PATH = resource_path("assets", "watermark.png")
 
 
 def _btn(parent, text, cmd, bg, hover):
@@ -346,7 +347,7 @@ class RegistrationPanel(tk.Frame):
             receipt_date_entry.insert(0, date.today().isoformat())
         self._save_details(silent=True)
         enrollment = _get_enrollment(self._current["id"])
-        out_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "forms_output")
+        out_dir = os.path.join(app_root(), "forms_output")
         os.makedirs(out_dir, exist_ok=True)
         r = self._current
         fname = f"reg_form_{r['first_name']}_{r['last_name']}_STU{r['id']:04d}.pdf"
@@ -355,7 +356,7 @@ class RegistrationPanel(tk.Frame):
         messagebox.showinfo("Done", f"PDF saved:\n{path}")
 
     def _open_folder(self):
-        out_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "forms_output")
+        out_dir = os.path.join(app_root(), "forms_output")
         os.makedirs(out_dir, exist_ok=True)
         os.startfile(out_dir)
 

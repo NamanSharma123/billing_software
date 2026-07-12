@@ -4,6 +4,7 @@ from tkinter import ttk, messagebox
 from db.database import connect_db
 from modules.students import _btn, _style_tree
 from forms.fee_receipt import build_fee_receipt, REPORTLAB_OK
+from paths import app_root
 
 C = {
     "bg": "#f8fafc", "card": "#ffffff", "text": "#1e293b",
@@ -453,7 +454,7 @@ class BillingPanel(tk.Frame):
                                              fg=C["rose"] if due_t > 0 else C["emerald"])
 
     def _save(self):
-        sid = self._stu.get(self.student_cb.get())
+        sid = self._resolve_student_id()
         if not sid: messagebox.showwarning("Select", "Select a student."); return
         try:
             total = float(self.total_var.get())
@@ -474,7 +475,7 @@ class BillingPanel(tk.Frame):
         self._load_table()
 
     def _pay(self):
-        sid = self._stu.get(self.student_cb.get())
+        sid = self._resolve_student_id()
         if not sid: messagebox.showwarning("Select", "Select a student."); return
         conn = connect_db()
         row = conn.execute("SELECT * FROM billing WHERE student_id=?", (sid,)).fetchone()
@@ -491,10 +492,10 @@ class BillingPanel(tk.Frame):
         self._load_table()
 
     def _history(self):
-        label = self.student_cb.get()
-        sid  = self._stu.get(label)
-        name = label.split(" — ", 1)[1] if " — " in label else label
+        sid = self._resolve_student_id()
         if not sid: messagebox.showwarning("Select", "Select a student."); return
+        label = self.student_cb.get()
+        name = label.split(" — ", 1)[1] if " — " in label else label
         conn = connect_db()
         b = conn.execute("SELECT id FROM billing WHERE student_id=?", (sid,)).fetchone()
         if not b: conn.close(); messagebox.showinfo("Info", "No billing record."); return
@@ -688,7 +689,7 @@ class _PaymentDialog(tk.Toplevel):
             "transaction_id": self.txn_var.get().strip(),
             "instalment_no": self.inst_var.get().strip(),
         }
-        out_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "forms_output")
+        out_dir = os.path.join(app_root(), "forms_output")
         os.makedirs(out_dir, exist_ok=True)
         fname = f"receipt_{data['name'].replace(' ', '_')}_STU{self.student_id:04d}_{payment_id}.pdf"
         path = os.path.join(out_dir, fname)

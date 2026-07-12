@@ -1,5 +1,7 @@
 import os
 
+from paths import resource_path
+
 try:
     from reportlab.lib.pagesizes import LETTER
     from reportlab.lib import colors
@@ -13,8 +15,8 @@ try:
 except ImportError:
     REPORTLAB_OK = False
 
-LOGO_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "logo.jpeg")
-WATERMARK_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "watermark.png")
+LOGO_PATH = resource_path("assets", "logo.jpeg")
+WATERMARK_PATH = resource_path("assets", "watermark.png")
 
 
 # ══════════════════════════════════════════════════════════════
